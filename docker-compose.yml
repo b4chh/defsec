@@ -3,15 +3,18 @@ version: '3.7'
 services:
   nginx:
     image: nginx:latest
+    container_name: nginx-proxy
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/sites-enabled/nginx.conf
+      - ./ssl/certs:/etc/nginx/certs
     ports:
-      - "9001:9001"
+      - "443:443"
+      - "80:80"
     depends_on:
       - bank-app
       - wall-app
     networks:
-      - app-network
+      - "nginx-proxy-net"
 
   bank-app:
     build:
@@ -21,7 +24,7 @@ services:
     volumes:
       - ./bank_app/app:/usr/app
     networks:
-      - app-network
+      - "nginx-proxy-net"
 
   wall-app:
     container_name: wall-app
@@ -32,26 +35,23 @@ services:
     volumes:
       - ./wall_app/wall:/usr/app
     networks:
-      - app-network
+      - "nginx-proxy-net"
   dns:
     image: andyshinn/dnsmasq
     container_name: dns
     ports:
-      - "53:53"
+      - "5353:5353"
     volumes:
       - ./dns/dnsmasq.conf:/etc/dnsmasq.conf
     cap_add:
       - NET_ADMIN
     restart: unless-stopped
     networks:
-      - app-network
-
+      - "nginx-proxy-net"
 
 networks:
-  app-network:
+  nginx-proxy-net:
     driver: bridge
-
-
 
 
 
