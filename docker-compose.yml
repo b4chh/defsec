@@ -42,6 +42,16 @@ services:
     volumes:
       - ./bank_app/app:/usr/app
 
+  cdn:
+    image: cdn
+    container_name: cdn
+    build:
+      context: ./cdn
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.cdn.rule=Host(`cdn.powerzio.net`)"
+      - "traefik.http.routers.cdn.entrypoints=web"
+
   wall:
     image: wall
     container_name: wall
