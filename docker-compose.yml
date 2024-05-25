@@ -1,59 +1,83 @@
 version: '3.7'
 
 services:
-  nginx:
-    image: nginx:latest
-    container_name: nginx-proxy
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/sites-enabled/nginx.conf
-      - ./ssl/certs:/etc/nginx/certs
+  # nginx:
+  #   image: nginx:latest
+  #   container_name: nginx-proxy
+  #   volumes:
+  #     - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+  #     - ./ssl/certs:/etc/nginx/certs
+  #   ports:
+  #     - "443:443"
+  #     - "80:80"
+  #   depends_on:
+  #     - bank-app
+  #     - wall-app
+  #   networks:
+  #     - nginx-proxy-net
+
+  traefik:
+    image: traefik:v2.5
+    container_name: traefik
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--entrypoints.web.address=:80"
     ports:
-      - "443:443"
-      - "80:80"
-    depends_on:
-      - bank-app
-      - wall-app
+      - "8083:8080"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
     networks:
-      - "nginx-proxy-net"
+      - nginx-proxy-net
 
   bank-app:
+    image: bank-app
+    container_name: bank-app
     build:
       context: ./bank_app/app
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.bank.rule=Host(`bank.powerzio.net`)"
+      - "traefik.http.services.bank.loadbalancer.server.port=5000"
     ports:
       - "8080:5000"
     volumes:
       - ./bank_app/app:/usr/app
     networks:
-      - "nginx-proxy-net"
+      - nginx-proxy-net
 
   wall-app:
+    image: wall-app
     container_name: wall-app
     build:
       context: ./wall_app/wall
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.wall.rule=Host(`wall.powerzio.net`)"
+      - "traefik.http.services.wall.loadbalancer.server.port=80"
     ports:
       - "8081:80"
     volumes:
       - ./wall_app/wall:/usr/app
     networks:
-      - "nginx-proxy-net"
+      - nginx-proxy-net
+
   dns:
     image: andyshinn/dnsmasq
     container_name: dns
     ports:
-      - "5353:5353"
+      - "53:53"
     volumes:
       - ./dns/dnsmasq.conf:/etc/dnsmasq.conf
     cap_add:
       - NET_ADMIN
     restart: unless-stopped
     networks:
-      - "nginx-proxy-net"
+      - nginx-proxy-net
 
 networks:
   nginx-proxy-net:
     driver: bridge
-
-
 
   # prometheus:
   #   image: prom/prometheus
