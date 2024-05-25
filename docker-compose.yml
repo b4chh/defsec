@@ -17,50 +17,42 @@ services:
   #     - nginx-proxy-net
 
   traefik:
-    image: traefik:v2.5
-    container_name: traefik
+    image: "traefik:v3.0"
+    container_name: "traefik"
     command:
       - "--api.insecure=true"
       - "--providers.docker=true"
-      - "--entrypoints.web.address=:80"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entryPoints.web.address=:80"
     ports:
-      - "8083:8080"
+      - "80:80"
+      - "8082:8080"
     volumes:
-      - "/var/run/docker.sock:/var/run/docker.sock"
-    networks:
-      - nginx-proxy-net
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
 
-  bank-app:
+  bank:
     image: bank-app
-    container_name: bank-app
+    container_name: bank
     build:
       context: ./bank_app/app
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.bank.rule=Host(`bank.powerzio.net`)"
-      - "traefik.http.services.bank.loadbalancer.server.port=5000"
-    ports:
-      - "8080:5000"
+      - "traefik.http.routers.bank.entrypoints=web"
     volumes:
       - ./bank_app/app:/usr/app
-    networks:
-      - nginx-proxy-net
 
-  wall-app:
-    image: wall-app
-    container_name: wall-app
+  wall:
+    image: wall
+    container_name: wall
     build:
       context: ./wall_app/wall
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.wall.rule=Host(`wall.powerzio.net`)"
-      - "traefik.http.services.wall.loadbalancer.server.port=80"
-    ports:
-      - "8081:80"
+      - "traefik.http.routers.wall.entrypoints=web"
     volumes:
       - ./wall_app/wall:/usr/app
-    networks:
-      - nginx-proxy-net
 
   dns:
     image: andyshinn/dnsmasq
